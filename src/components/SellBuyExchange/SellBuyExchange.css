@@ -1,0 +1,83 @@
+.sell-buy-exchange-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.sell-buy-exchange-container h2 {
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+  color: #333;
+  font-weight: 700;
+}
+
+.SellBuyExchange-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  padding: 0 20px;
+}
+
+.SellBuyExchange-card {
+  background: white;
+  border: none;
+  border-radius: 8px;
+  padding: 25px 20px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.SellBuyExchange-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+.SellBuyExchange-card .emoji {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.SellBuyExchange-card h2 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  color: #333;
+  font-weight: 600;
+}
+
+.SellBuyExchange-card p {
+  color: #666;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.SellBuyExchange-card:nth-child(1) {
+  border-top: 3px solid #28a745;
+}
+
+.SellBuyExchange-card:nth-child(2) {
+  border-top: 3px solid #007bff;
+}
+
+.SellBuyExchange-card:nth-child(3) {
+  border-top: 3px solid #ffc107;
+}
+
+@media (max-width: 768px) {
+  .sell-buy-exchange-container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+  }
+  
+  .SellBuyExchange-cards-container {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 0 15px;
+  }
+  
+  .SellBuyExchange-card {
+    padding: 20px 15px;
+  }
+}

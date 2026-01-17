@@ -1,0 +1,33 @@
+{
+  "name": "xowner",
+  "version": "1.0.0",
+  "description": "XOWNER frontend",
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Suresh-kumar-barawar/XOWNER.git"
+  },
+  "author": "Suresh Kumar",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Suresh-kumar-barawar/XOWNER/issues"
+  },
+  "homepage": "https://github.com/Suresh-kumar-barawar/XOWNER#readme",
+  "dependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.11.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.2",
+    "vite": "^7.3.0"
+  }
+}
