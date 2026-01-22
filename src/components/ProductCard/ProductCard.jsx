@@ -97,12 +97,12 @@ const ProductCard = () => {
       </div>
       
       <div className="products-section">
-        <div className="section-header">
-          <h2>Featured Products ({productsList.length})</h2>
+        {/* <div className="section-header">
+          <h2>Featured Products</h2>
           {searchTerm && (
             <p className="search-results">Showing results for "{searchTerm}"</p>
           )}
-        </div>
+        </div> */}
         
         <div className="products-grid">
           {productsList.length > 0 ? (
