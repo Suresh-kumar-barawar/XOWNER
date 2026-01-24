@@ -1,6 +1,5 @@
 import React from 'react';
 import { FaShieldAlt, FaUsers, FaGlobe, FaHandshake, FaRocket, FaHeart, FaLinkedin, FaTwitter, FaGithub } from 'react-icons/fa';
-import './About.css';
 
 const About = () => {
   const features = [

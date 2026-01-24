@@ -34,7 +34,7 @@ const useGeolocation = () => {
     );
   }, []);
 
-  return { location, loading };
+  return { location, loading, setLocation };
 };
 
 export default useGeolocation;
