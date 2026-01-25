@@ -7,16 +7,22 @@ import About from "./components/About/About";
 import ProductDetails from "./components/ProductDetails/ProductDetails";
 import SellProduct from "./components/SellProduct/SellProduct";
 import Login from "./components/Login/Login";
+import Chat from "./components/Chat/Chat";
+import Help from "./components/Help/Help";
 import Footer from "./components/Footer/Footer";
+import BottomNav from "./components/BottomNav/BottomNav";
+import ScrollToTop from "./utils/useScrollToTop";
 
 const AppLayout = () => {
   return (
     <div className="app-layout">
       <Header />
+      <ScrollToTop />
       <main className="main-content">
         <Outlet />
       </main>
       <Footer />
+      <BottomNav />
     </div>
   );
 };
@@ -49,6 +55,21 @@ const appRoute = createBrowserRouter([
       {
         path: "/login",
         element: <Login />,
+        errorElement: <Error />,
+      },
+      {
+        path: "/chat",
+        element: <Chat />,
+        errorElement: <Error />,
+      },
+      {
+        path: "/help",
+        element: <Help />,
+        errorElement: <Error />,
+      },
+      {
+        path: "/exchange",
+        element: <SellProduct />,
         errorElement: <Error />,
       },
     ],

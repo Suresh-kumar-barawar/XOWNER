@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaSearch, FaHeart, FaStar, FaTag, FaExchangeAlt, FaShoppingCart } from 'react-icons/fa';
 import { products } from '../../utils/mockData';
@@ -6,6 +6,13 @@ import { products } from '../../utils/mockData';
 const ProductCard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState(products);
+  const [isFixed, setIsFixed] = useState(false);
+  const [fixedStyle, setFixedStyle] = useState({});
+  const [placeholderHeight, setPlaceholderHeight] = useState(0);
+  const containerRef = useRef(null);
+  const formRef = useRef(null);
+  const placeholderRef = useRef(null);
+  
 
   const handleSearch = (e) => {
     const value = e.target.value;
@@ -32,6 +39,61 @@ const ProductCard = () => {
     setSearchTerm('');
     setFilteredProducts(products);
   };
+
+  useEffect(() => {
+    const headerEl = document.querySelector('header');
+    const headerHeight = headerEl ? Math.ceil(headerEl.getBoundingClientRect().height) : 0;
+
+    let ticking = false;
+
+    const update = () => {
+      if (!containerRef.current || !formRef.current) {
+        ticking = false;
+        return;
+      }
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const formRect = formRef.current.getBoundingClientRect();
+
+      // should become fixed when the top of container has scrolled past the header
+      // and should remain fixed until the container bottom is above header + form height
+      const shouldFix = containerRect.top <= headerHeight && (containerRect.bottom >= headerHeight + formRect.height);
+
+      if (shouldFix) {
+        // compute left relative to viewport and width to match the container/form
+        const left = Math.max(formRect.left, 0);
+        setFixedStyle({ left: `${left}px`, width: `${formRect.width}px`, top: `${headerHeight}px` });
+        setPlaceholderHeight(Math.ceil(formRect.height));
+        setIsFixed(true);
+      } else {
+        setIsFixed(false);
+        setFixedStyle({});
+        setPlaceholderHeight(0);
+      }
+
+      ticking = false;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    };
+
+    // initial check
+    update();
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
+  
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
@@ -81,11 +143,18 @@ const ProductCard = () => {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div ref={containerRef} className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Search Section */}
       <div className="mb-6">
-        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-          <div className="flex items-stretch bg-white border-2 border-gray-200 rounded-lg overflow-hidden focus-within:border-primary transition-colors">
+        {/* placeholder to preserve layout when form becomes fixed */}
+        {isFixed && <div ref={placeholderRef} style={{ height: placeholderHeight }} aria-hidden />}
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className={`max-w-2xl mx-auto rounded-3xl transition-shadow duration-200 ${isFixed ? 'shadow-xl' : ''}`}
+          style={isFixed ? { position: 'fixed', zIndex: 40, ...fixedStyle } : { position: 'relative' }}
+        >
+          <div className="flex items-stretch bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl overflow-hidden transition-all duration-200 focus-within:bg-white focus-within:border-primary focus-within:shadow-lg">
             <div className="relative flex-1">
               <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
               <input
@@ -93,12 +162,12 @@ const ProductCard = () => {
                 value={searchTerm}
                 onChange={handleSearch}
                 placeholder="Search for products, brands, or categories..."
-                className="w-full h-full py-3 pl-12 pr-4 text-base outline-none bg-transparent"
+                className="w-full h-full py-3 pl-12 pr-4 text-base outline-none bg-transparent text-gray-900 placeholder-gray-500 transition-colors"
               />
             </div>
             <button
               type="submit"
-              className="flex-shrink-0 px-3 sm:px-6 bg-primary text-white font-semibold hover:bg-primary-dark transition-colors text-sm sm:text-base rounded-r-md"
+              className="flex-shrink-0 px-3 sm:px-6 bg-primary text-white font-semibold hover:bg-primary-dark transition-colors text-sm sm:text-base rounded-r-3xl"
             >
               Search
             </button>
@@ -112,7 +181,7 @@ const ProductCard = () => {
       </div> */}
 
       {/* Products Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-6">
         {filteredProducts.length > 0 ? (
           filteredProducts.map((product) => (
             <Link
@@ -120,7 +189,7 @@ const ProductCard = () => {
               to={`/products/${product.id}`}
               className="group block"
             >
-              <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300 cursor-pointer relative flex flex-col h-full">
+              <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-2xl transition-shadow duration-300 cursor-pointer relative flex flex-col h-full">
                 {/* Product Badge */}
                 <div className="absolute top-3 right-3 z-10">
                   <div className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase ${getBadgeClass(product.listingType)}`}>
@@ -165,11 +234,16 @@ const ProductCard = () => {
                     )}
                   </div>
 
-                  {/* Condition */}
-                  <div className="mb-2">
+                  {/* Condition (now includes % OFF when applicable) */}
+                  <div className="mb-2 flex items-center gap-2">
                     <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getConditionClass(product.condition)}`}>
                       {product.condition}
                     </span>
+                    {product.originalPrice && (
+                      <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-semibold">
+                        {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                      </span>
+                    )}
                   </div>
 
                   {/* Price */}
@@ -178,14 +252,9 @@ const ProductCard = () => {
                       {formatPrice(product.price)}
                     </span>
                     {product.originalPrice && (
-                      <>
-                        <span className="text-xs text-gray-400 line-through">
-                          {formatPrice(product.originalPrice)}
-                        </span>
-                        <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-semibold">
-                          {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                        </span>
-                      </>
+                      <span className="text-xs text-gray-400 line-through">
+                        {formatPrice(product.originalPrice)}
+                      </span>
                     )}
                   </div>
 
@@ -220,6 +289,7 @@ const ProductCard = () => {
           </div>
         )}
       </div>
+      
     </div>
   );
 };
