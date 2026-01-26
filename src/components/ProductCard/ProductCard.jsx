@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaSearch, FaHeart, FaStar, FaTag, FaExchangeAlt, FaShoppingCart } from 'react-icons/fa';
+import { FaSearch, FaHeart, FaStar, FaTag, FaExchangeAlt, FaShoppingCart, FaComments } from 'react-icons/fa';
 import { products } from '../../utils/mockData';
 
 const ProductCard = () => {
@@ -143,7 +143,7 @@ const ProductCard = () => {
   };
 
   return (
-    <div ref={containerRef} className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div ref={containerRef} className="px-2 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Search Section */}
       <div className="mb-6">
         {/* placeholder to preserve layout when form becomes fixed */}
@@ -152,7 +152,7 @@ const ProductCard = () => {
           ref={formRef}
           onSubmit={handleSubmit}
           className={`max-w-2xl mx-auto rounded-3xl transition-shadow duration-200 ${isFixed ? 'shadow-xl' : ''}`}
-          style={isFixed ? { position: 'fixed', zIndex: 40, ...fixedStyle } : { position: 'relative' }}
+          style={isFixed ? { position: 'fixed', zIndex: 30, ...fixedStyle } : { position: 'relative' }}
         >
           <div className="flex items-stretch bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl overflow-hidden transition-all duration-200 focus-within:bg-white focus-within:border-primary focus-within:shadow-lg">
             <div className="relative flex-1">
@@ -258,20 +258,30 @@ const ProductCard = () => {
                     )}
                   </div>
 
-                  {/* Seller Info */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-gray-200 mt-auto">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-semibold text-xs">
-                      {product.seller.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-xs text-gray-900 truncate">
-                        {product.seller.name}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <FaStar className="text-yellow-400 w-2.5 h-2.5" />
-                        <span>{product.seller.rating}</span>
-                      </div>
-                    </div>
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2 border-t border-gray-200 mt-auto">
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Handle chat functionality
+                      }}
+                      className="flex-1 bg-primary text-white py-2 px-3 rounded-md text-xs font-semibold hover:bg-primary-dark transition-colors flex items-center justify-center gap-1"
+                    >
+                      <FaComments className="w-3 h-3" />
+                      Chat
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Navigate to product details
+                        window.location.href = `/products/${product.id}`;
+                      }}
+                      className="flex-1 bg-gray-600 text-white py-2 px-3 rounded-md text-xs font-semibold hover:bg-gray-700 transition-colors"
+                    >
+                      Explore
+                    </button>
                   </div>
                 </div>
               </div>
