@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { FaSearch, FaHeart, FaStar, FaTag, FaExchangeAlt, FaShoppingCart, FaComments } from 'react-icons/fa';
 import { products } from '../../utils/mockData';
 
-const ProductCard = () => {
+const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredProducts, setFilteredProducts] = useState(products);
+  const [filteredProducts, setFilteredProducts] = useState(initialProducts);
   const [isFixed, setIsFixed] = useState(false);
   const [fixedStyle, setFixedStyle] = useState({});
   const [placeholderHeight, setPlaceholderHeight] = useState(0);
@@ -19,9 +19,9 @@ const ProductCard = () => {
     setSearchTerm(value);
     
     if (value.trim() === '') {
-      setFilteredProducts(products);
+      setFilteredProducts(initialProducts);
     } else {
-      const filtered = products.filter(product =>
+      const filtered = initialProducts.filter(product =>
         product.title.toLowerCase().includes(value.toLowerCase()) ||
         product.brand.toLowerCase().includes(value.toLowerCase()) ||
         product.category.toLowerCase().includes(value.toLowerCase()) ||
@@ -37,7 +37,7 @@ const ProductCard = () => {
 
   const resetSearch = () => {
     setSearchTerm('');
-    setFilteredProducts(products);
+    setFilteredProducts(initialProducts);
   };
 
   useEffect(() => {
@@ -186,7 +186,7 @@ const ProductCard = () => {
           filteredProducts.map((product) => (
             <Link
               key={product.id}
-              to={`/products/${product.id}`}
+              to={`/products/${product.id}?from=${referrer}`}
               className="group block"
             >
               <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-2xl transition-shadow duration-300 cursor-pointer relative flex flex-col h-full">
@@ -269,9 +269,9 @@ const ProductCard = () => {
                       className="flex-1 bg-primary text-white py-2 px-3 rounded-md text-xs font-semibold hover:bg-primary-dark transition-colors flex items-center justify-center gap-1"
                     >
                       <FaComments className="w-3 h-3" />
-                      Chat
+                      Chat With Seller
                     </button>
-                    <button 
+                    {/* <button 
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -281,7 +281,7 @@ const ProductCard = () => {
                       className="flex-1 bg-gray-600 text-white py-2 px-3 rounded-md text-xs font-semibold hover:bg-gray-700 transition-colors"
                     >
                       Explore
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               </div>

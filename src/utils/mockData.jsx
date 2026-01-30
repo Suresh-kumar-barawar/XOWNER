@@ -1,5 +1,21 @@
 // mockData.js - Mock data for XOWNER e-commerce platform
 
+// Utility function to get condition-based styling
+export const getConditionStyle = (condition) => {
+  const baseClasses = "px-3 py-1 rounded-full text-sm font-medium";
+  
+  switch (condition) {
+    case 'excellent':
+      return `${baseClasses} bg-green-100 text-green-800`;
+    case 'good':
+      return `${baseClasses} bg-blue-100 text-blue-800`;
+    case 'average':
+      return `${baseClasses} bg-orange-100 text-orange-800`;
+    default:
+      return `${baseClasses} bg-gray-100 text-gray-800`;
+  }
+};
+
 export const products = [
   // MOBILE PHONES
   {
@@ -511,7 +527,6 @@ export const conditions = [
 // Listing types
 export const listingTypes = [
   { value: "sell", label: "Sell", icon: "💰" },
-  { value: "buy", label: "Buy", icon: "🛒" },
   { value: "exchange", label: "Exchange", icon: "🔄" },
 ];
 

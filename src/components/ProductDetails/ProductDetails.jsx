@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { FaPhone, FaHeart, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaEye, FaUsers, FaArrowLeft, FaTag, FaExchangeAlt, FaShoppingCart } from 'react-icons/fa';
-import { products } from '../../utils/mockData';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { FaComments, FaHeart, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaEye, FaUsers, FaArrowLeft, FaTag, FaExchangeAlt, FaShoppingCart } from 'react-icons/fa';
+import { products, getConditionStyle } from '../../utils/mockData';
 
 const ProductDetails = () => {
   const { productId } = useParams();
+  const [searchParams] = useSearchParams();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  const fromPage = searchParams.get('from') || 'home';
+  const backPath = fromPage === 'exchange' ? '/exchange' : '/';
+  const backText = fromPage === 'exchange' ? 'Back to Exchange' : 'Back to Home';
   
   const product = products.find(p => p.id === productId);
   
@@ -15,8 +20,8 @@ const ProductDetails = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h2>
           <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
-          <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
-            <FaArrowLeft /> Back to Home
+          <Link to={backPath} className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
+            <FaArrowLeft /> {backText}
           </Link>
         </div>
       </div>
@@ -43,8 +48,8 @@ const ProductDetails = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">
-          <Link to="/" className="flex items-center gap-1 hover:text-primary transition-colors">
-            <FaArrowLeft /> Back to Home
+          <Link to={backPath} className="flex items-center gap-1 hover:text-primary transition-colors">
+            <FaArrowLeft /> {backText}
           </Link>
           <span>/</span>
           <span className="text-gray-900 font-medium">{product.title}</span>
@@ -99,8 +104,8 @@ const ProductDetails = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.title}</h1>
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">{product.brand}</span>
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">{product.condition}</span>
+                <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">{product.brand}</span>
+                <span className={getConditionStyle(product.condition)}>{product.condition}</span>
                 <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">{product.status}</span>
               </div>
             </div>
@@ -160,7 +165,7 @@ const ProductDetails = () => {
             
             <div className="flex gap-4 pt-6">
               <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors" onClick={handleContactSeller}>
-                <FaPhone /> Contact Seller
+                <FaComments /> Chat With Seller
               </button>
               <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-primary text-primary rounded-xl font-semibold hover:bg-primary hover:text-white transition-colors" onClick={handleInterested}>
                 <FaHeart /> I'm Interested

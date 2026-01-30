@@ -6,6 +6,7 @@ import Error from "./components/Error/Error";
 import About from "./components/About/About";
 import ProductDetails from "./components/ProductDetails/ProductDetails";
 import SellProduct from "./components/SellProduct/SellProduct";
+import Exchange from "./components/Exchange/Exchange";
 import Login from "./components/Login/Login";
 import Chat from "./components/Chat/Chat";
 import Help from "./components/Help/Help";
@@ -69,7 +70,7 @@ const appRoute = createBrowserRouter([
       },
       {
         path: "/exchange",
-        element: <SellProduct />,
+        element: <Exchange />,
         errorElement: <Error />,
       },
     ],

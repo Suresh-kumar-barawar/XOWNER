@@ -44,13 +44,13 @@ const Header = () => {
             {/* Right Section - Desktop Navigation / Mobile Menu Button */}
             <div className="flex items-center space-x-4">
               <div className="hidden md:flex items-center space-x-4">
-                <Link 
+                {/* <Link 
                   to="/sell" 
                   className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
                 >
                   <FaTag size={14} />
                   <span>Sell</span>
-                </Link>
+                </Link> */}
                 <Link 
                   to="/about" 
                   className="text-gray-700 hover:text-primary transition-colors no-underline"
@@ -99,14 +99,14 @@ const Header = () => {
           <div className="fixed top-16 left-0 right-0 bg-white shadow-lg border-t border-gray-200">
             <div className="px-4 py-6 space-y-4">
               {/* Mobile Navigation */}
-              <Link 
+              {/* <Link 
                 to="/sell" 
                 className="flex items-center space-x-2 bg-primary text-white px-4 py-3 rounded-lg hover:bg-primary-dark transition-colors w-full justify-center"
                 onClick={toggleMenu}
               >
                 <FaTag size={14} />
                 <span>Sell</span>
-              </Link>
+              </Link> */}
               
               <Link 
                 to="/about" 
