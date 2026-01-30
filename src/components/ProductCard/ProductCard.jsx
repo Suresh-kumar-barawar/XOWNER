@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaSearch, FaHeart, FaStar, FaTag, FaExchangeAlt, FaShoppingCart, FaComments } from 'react-icons/fa';
-import { products } from '../../utils/mockData';
+import { FaSearch, FaHeart, FaStar, FaTag, FaExchangeAlt, FaShoppingCart, FaComments, FaFilter, FaTimes, FaChevronDown, FaSort } from 'react-icons/fa';
+import { products, categories, brands, conditions, listingTypes } from '../../utils/mockData';
+import ProductFilter from './ProductFilter';
 
 const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,31 +14,127 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
   const formRef = useRef(null);
   const placeholderRef = useRef(null);
   
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    category: 'all',
+    brand: 'all',
+    condition: 'all',
+    listingType: 'all',
+    priceRange: [0, 200000],
+    sortBy: 'newest'
+  });
+  const [activeFiltersCount, setActiveFiltersCount] = useState(0);
+  
+
+  // Apply all filters
+  const applyFilters = (searchValue = searchTerm, currentFilters = filters) => {
+    let filtered = [...initialProducts];
+
+    // Search filter
+    if (searchValue.trim() !== '') {
+      filtered = filtered.filter(product =>
+        product.title.toLowerCase().includes(searchValue.toLowerCase()) ||
+        product.brand.toLowerCase().includes(searchValue.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchValue.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchValue.toLowerCase())
+      );
+    }
+
+    // Category filter
+    if (currentFilters.category !== 'all') {
+      filtered = filtered.filter(product => product.category === currentFilters.category);
+    }
+
+    // Brand filter
+    if (currentFilters.brand !== 'all') {
+      filtered = filtered.filter(product => product.brand === currentFilters.brand);
+    }
+
+    // Condition filter
+    if (currentFilters.condition !== 'all') {
+      filtered = filtered.filter(product => product.condition === currentFilters.condition);
+    }
+
+    // Listing type filter
+    if (currentFilters.listingType !== 'all') {
+      filtered = filtered.filter(product => product.listingType === currentFilters.listingType);
+    }
+
+    // Price range filter
+    filtered = filtered.filter(product => 
+      product.price >= currentFilters.priceRange[0] && 
+      product.price <= currentFilters.priceRange[1]
+    );
+
+    // Sort products
+    switch (currentFilters.sortBy) {
+      case 'price-low':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-high':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'newest':
+        filtered.sort((a, b) => new Date(b.postedDate) - new Date(a.postedDate));
+        break;
+      case 'oldest':
+        filtered.sort((a, b) => new Date(a.postedDate) - new Date(b.postedDate));
+        break;
+      case 'popular':
+        filtered.sort((a, b) => b.views - a.views);
+        break;
+      default:
+        break;
+    }
+
+    setFilteredProducts(filtered);
+  };
 
   const handleSearch = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
-    if (value.trim() === '') {
-      setFilteredProducts(initialProducts);
-    } else {
-      const filtered = initialProducts.filter(product =>
-        product.title.toLowerCase().includes(value.toLowerCase()) ||
-        product.brand.toLowerCase().includes(value.toLowerCase()) ||
-        product.category.toLowerCase().includes(value.toLowerCase()) ||
-        product.description.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredProducts(filtered);
-    }
+    applyFilters(value, filters);
   };
+
+  const handleFilterChange = (filterType, value) => {
+    const newFilters = { ...filters, [filterType]: value };
+    setFilters(newFilters);
+    applyFilters(searchTerm, newFilters);
+  };
+
+  const clearAllFilters = () => {
+    const defaultFilters = {
+      category: 'all',
+      brand: 'all',
+      condition: 'all',
+      listingType: 'all',
+      priceRange: [0, 200000],
+      sortBy: 'newest'
+    };
+    setFilters(defaultFilters);
+    setSearchTerm('');
+    applyFilters('', defaultFilters);
+  };
+
+  // Count active filters
+  useEffect(() => {
+    let count = 0;
+    if (filters.category !== 'all') count++;
+    if (filters.brand !== 'all') count++;
+    if (filters.condition !== 'all') count++;
+    if (filters.listingType !== 'all') count++;
+    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 200000) count++;
+    if (searchTerm.trim() !== '') count++;
+    setActiveFiltersCount(count);
+  }, [filters, searchTerm]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
   };
 
   const resetSearch = () => {
-    setSearchTerm('');
-    setFilteredProducts(initialProducts);
+    clearAllFilters();
   };
 
   useEffect(() => {
@@ -175,10 +272,44 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
         </form>
       </div>
 
-      {/* Section Header */}
-      {/* <div className="mb-5">
-        <h2 className="text-3xl font-bold text-gray-900 mb-1">Featured Products</h2>
-      </div> */}
+      {/* Filter Component */}
+      <ProductFilter
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+        activeFiltersCount={activeFiltersCount}
+        onClearFilters={clearAllFilters}
+      />
+
+      {/* Results Header with Filter Controls */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+            {searchTerm.trim() ? `Search Results for "${searchTerm}"` : 'All Products'}
+          </h2>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Filter Toggle */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+              showFilters 
+                ? 'bg-primary text-white border-primary' 
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <FaFilter className="w-4 h-4" />
+            <span className="hidden sm:inline">Filter</span>
+            {activeFiltersCount > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* Products Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-6">
