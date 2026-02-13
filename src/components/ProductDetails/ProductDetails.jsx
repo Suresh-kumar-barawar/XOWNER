@@ -1,25 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { FaComments, FaHeart, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaEye, FaUsers, FaArrowLeft, FaTag, FaExchangeAlt, FaShoppingCart } from 'react-icons/fa';
-import { products, getConditionStyle } from '../../utils/mockData';
+import { getConditionStyle } from '../../utils/mockData';
+import { getProductById } from '../../api/products';
 
 const ProductDetails = () => {
   const { productId } = useParams();
   const [searchParams] = useSearchParams();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   const fromPage = searchParams.get('from') || 'home';
   const backPath = fromPage === 'exchange' ? '/exchange' : '/';
   const backText = fromPage === 'exchange' ? 'Back to Exchange' : 'Back to Home';
   
-  const product = products.find(p => p.id === productId);
+  // Fetch product from backend
+  useEffect(() => {
+    const loadProduct = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getProductById(productId);
+        setProduct(data);
+      } catch (err) {
+        console.error('Failed to fetch product:', err);
+        setError(err.message || 'Failed to load product');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (productId) {
+      loadProduct();
+    }
+  }, [productId]);
   
-  if (!product) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-gray-600">Loading product details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h2>
-          <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
+          <p className="text-gray-600 mb-6">{error || 'The product you\'re looking for doesn\'t exist.'}</p>
           <Link to={backPath} className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
             <FaArrowLeft /> {backText}
           </Link>
@@ -37,7 +71,7 @@ const ProductDetails = () => {
   };
   
   const handleContactSeller = () => {
-    alert(`Contact ${product.seller.name} at their location: ${product.seller.location}`);
+    alert(`Chat with ${product.seller.name} coming soon!`);
   };
   
   const handleInterested = () => {
@@ -59,7 +93,7 @@ const ProductDetails = () => {
           <div className="space-y-4">
             <div className="relative bg-white rounded-xl overflow-hidden shadow-md">
               <img 
-                src={product.images[currentImageIndex]} 
+                src={product.images && product.images.length > 0 ? product.images[currentImageIndex] : 'https://via.placeholder.com/500x400?text=No+Image'} 
                 alt={product.title}
                 className="w-full h-96 object-cover"
                 onError={(e) => {
@@ -80,7 +114,7 @@ const ProductDetails = () => {
               </div>
             </div>
             
-            {product.images.length > 1 && (
+            {product.images && product.images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto">
                 {product.images.map((image, index) => (
                   <img
@@ -127,7 +161,7 @@ const ProductDetails = () => {
               <p className="text-gray-600 leading-relaxed">{product.description}</p>
             </div>
             
-            {product.exchangePreferences && (
+            {product.exchangePreferences && product.exchangePreferences.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Exchange Preferences</h3>
                 <div className="flex flex-wrap gap-2">
@@ -152,16 +186,18 @@ const ProductDetails = () => {
               </div>
             </div>
             
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Included Accessories</h3>
-              <div className="flex flex-wrap gap-2">
-                {product.accessories.map((accessory, index) => (
-                  <span key={index} className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm">
-                    ✓ {accessory}
-                  </span>
-                ))}
+            {product.accessories && product.accessories.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Included Accessories</h3>
+                <div className="flex flex-wrap gap-2">
+                  {product.accessories.map((accessory, index) => (
+                    <span key={index} className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm">
+                      ✓ {accessory}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             
             <div className="flex gap-4 pt-6">
               <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors" onClick={handleContactSeller}>
@@ -187,10 +223,10 @@ const ProductDetails = () => {
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">{product.seller.name}</h4>
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
-                    <FaStar className="text-yellow-400" /> {product.seller.rating}/5 Rating
+                    <FaStar className="text-yellow-400" /> {product.seller.rating?.toFixed(1) || '4.5'}/5 Rating
                   </div>
                   <div className="flex items-center gap-2">
-                    <FaMapMarkerAlt className="text-gray-400" /> {product.seller.location}
+                    <FaMapMarkerAlt className="text-gray-400" /> {product.seller.location || 'Not specified'}
                   </div>
                   <div className="flex items-center gap-2">
                     <FaCalendarAlt className="text-gray-400" /> Joined {new Date(product.seller.joinedDate).toLocaleDateString()}
@@ -205,12 +241,12 @@ const ProductDetails = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <FaEye className="text-2xl text-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">{product.views}</div>
+                <div className="text-2xl font-bold text-gray-900">{product.views || 0}</div>
                 <div className="text-sm text-gray-600">Views</div>
               </div>
               <div className="text-center">
                 <FaUsers className="text-2xl text-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">{product.interested}</div>
+                <div className="text-2xl font-bold text-gray-900">{product.interested || 0}</div>
                 <div className="text-sm text-gray-600">Interested</div>
               </div>
               <div className="text-center">

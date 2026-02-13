@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt, FaEye, FaEyeSlash, FaGoogle, FaFacebook, FaArrowLeft, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt, FaEye, FaEyeSlash, FaGoogle, FaFacebook, FaArrowLeft, FaCheck, FaExclamationTriangle, FaSpinner } from 'react-icons/fa';
+import { login, register as registerApi } from '../../api/auth';
+import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login: loginToContext } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     email: '',
@@ -62,6 +66,10 @@ const Login = () => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+    // Also clear submit error
+    if (errors.submit) {
+      setErrors(prev => ({ ...prev, submit: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -70,28 +78,31 @@ const Login = () => {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setSuccessMessage('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       if (isLogin) {
-        // Demo login check
-        if (formData.email === 'demo@xowner.com' && formData.password === 'demo123') {
-          alert('Login successful! Welcome to XOWNER');
+        const data = await login({ email: formData.email, password: formData.password });
+        // Use context login method to update global auth state
+        loginToContext(data);
+        
+        // Show success message and redirect
+        setSuccessMessage('Welcome back! Redirecting...');
+        setTimeout(() => {
           navigate('/');
-        } else {
-          alert('Login successful!');
-          navigate('/');
-        }
+        }, 1500);
       } else {
-        alert('Registration successful! Please login with your credentials.');
-        setIsLogin(true);
-        setFormData({ email: formData.email, password: '', name: '', phone: '', location: '' });
+        await registerApi({ fullName: formData.name, email: formData.email, password: formData.password, phone: formData.phone, location: formData.location });
+        setSuccessMessage('Registration successful! Redirecting to login...');
+        setTimeout(() => {
+          setIsLogin(true);
+          setFormData({ email: formData.email, password: '', name: '', phone: '', location: '' });
+          setSuccessMessage('');
+          setIsLoading(false);
+        }, 1500);
       }
     } catch (error) {
-      alert('Something went wrong. Please try again.');
-    } finally {
+      setErrors({ submit: error?.message || 'Something went wrong. Please try again.' });
       setIsLoading(false);
     }
   };
@@ -104,6 +115,7 @@ const Login = () => {
     setIsLogin(!isLogin);
     setFormData({ email: '', password: '', name: '', phone: '', location: '' });
     setErrors({});
+    setSuccessMessage('');
   };
 
   return (
@@ -264,9 +276,32 @@ const Login = () => {
             </div>
           )}
 
+          {/* Success Message */}
+          {successMessage && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
+              <FaCheck className="text-green-600 flex-shrink-0" size={20} />
+              <div>
+                <p className="text-sm font-medium text-green-800">{successMessage}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {errors.submit && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+              <FaExclamationTriangle className="text-red-600 flex-shrink-0" size={20} />
+              <div>
+                <p className="text-sm font-medium text-red-800">{errors.submit}</p>
+              </div>
+            </div>
+          )}
+
           <button type="submit" className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={isLoading}>
             {isLoading ? (
-              <span>Processing...</span>
+              <>
+                <FaSpinner className="animate-spin" size={16} />
+                <span>{isLogin ? 'Signing in...' : 'Creating account...'}</span>
+              </>
             ) : (
               <>
                 {isLogin ? <FaLock /> : <FaCheck />}
@@ -285,7 +320,7 @@ const Login = () => {
           </p>
         </div>
 
-        {isLogin && (
+        {/* {isLogin && (
           <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
             <h4 className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
               <FaUser className="text-primary" /> Demo Account
@@ -295,7 +330,7 @@ const Login = () => {
               <p><strong>Password:</strong> demo123</p>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

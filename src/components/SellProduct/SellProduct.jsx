@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCamera, FaPlus, FaTimes, FaCheck, FaExclamationTriangle, FaArrowLeft, FaMapMarkerAlt, FaRupeeSign, FaTag, FaExchangeAlt, FaShoppingCart, FaUpload } from 'react-icons/fa';
 import { categories, brands, conditions, listingTypes } from '../../utils/mockData';
+import useGeolocation from '../../utils/useGeolocation';
+import LocationModal from '../LocationModal/LocationModal';
+import { createProduct } from '../../api/products';
 
 const SellProduct = () => {
   const navigate = useNavigate();
@@ -9,6 +12,7 @@ const SellProduct = () => {
     title: '',
     category: '',
     brand: '',
+    otherBrand: '',
     model: '',
     condition: '',
     price: '',
@@ -20,6 +24,7 @@ const SellProduct = () => {
       ram: '',
       display: '',
       processor: '',
+      camera: '',
       battery: '',
       os: ''
     },
@@ -27,12 +32,15 @@ const SellProduct = () => {
     warranty: false,
     warrantyUntil: '',
     images: [],
+    primaryIndex: null,
     location: '',
     exchangePreferences: []
   });
 
   const [newAccessory, setNewAccessory] = useState('');
   const [newExchangePref, setNewExchangePref] = useState('');
+  const { location, loading: locationLoading, setLocation } = useGeolocation();
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -69,6 +77,7 @@ const SellProduct = () => {
       if (!formData.title.trim()) newErrors.title = 'Product title is required';
       if (!formData.category) newErrors.category = 'Category is required';
       if (!formData.brand) newErrors.brand = 'Brand is required';
+      if (formData.brand === 'Other' && !formData.otherBrand.trim()) newErrors.otherBrand = 'Please specify the brand';
       if (!formData.condition) newErrors.condition = 'Condition is required';
     }
     
@@ -88,30 +97,66 @@ const SellProduct = () => {
   };
 
   const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const imageUrls = files.map(file => URL.createObjectURL(file));
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ...imageUrls].slice(0, 5) // Max 5 images
-    }));
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setFormData(prev => {
+      const maxAllowed = Math.max(0, 5 - prev.images.length);
+      const toAdd = files.slice(0, maxAllowed).map(f => URL.createObjectURL(f));
+      const newImages = [...prev.images, ...toAdd];
+      return {
+        ...prev,
+        images: newImages,
+        primaryIndex: prev.primaryIndex === null && newImages.length > 0 ? 0 : prev.primaryIndex
+      };
+    });
+    // reset input so same file can be selected again if needed
+    e.target.value = '';
   };
 
   const removeImage = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => {
+      const newImages = prev.images.filter((_, i) => i !== index);
+      let newPrimary = prev.primaryIndex;
+      if (prev.primaryIndex === index) {
+        newPrimary = newImages.length > 0 ? 0 : null;
+      } else if (prev.primaryIndex !== null && index < prev.primaryIndex) {
+        newPrimary = prev.primaryIndex - 1;
+      }
+      return {
+        ...prev,
+        images: newImages,
+        primaryIndex: newPrimary
+      };
+    });
+  };
+
+  const setPrimaryImage = (index) => {
+    setFormData(prev => ({ ...prev, primaryIndex: index }));
   };
 
   const addAccessory = () => {
-    if (newAccessory.trim()) {
+    const acc = newAccessory.trim();
+    if (acc) {
       setFormData(prev => ({
         ...prev,
-        accessories: [...prev.accessories, newAccessory.trim()]
+        accessories: prev.accessories.includes(acc) ? prev.accessories : [...prev.accessories, acc]
       }));
       setNewAccessory('');
     }
   };
+
+  const addPresetAccessory = (acc) => {
+    setFormData(prev => ({
+      ...prev,
+      accessories: prev.accessories.includes(acc) ? prev.accessories : [...prev.accessories, acc]
+    }));
+  };
+
+  useEffect(() => {
+    if (!locationLoading && location) {
+      setFormData(prev => prev.location ? prev : ({ ...prev, location: `${location.city}${location.state ? ', ' + location.state : ''}` }));
+    }
+  }, [locationLoading, location]);
 
   const removeAccessory = (index) => {
     setFormData(prev => ({
@@ -149,39 +194,57 @@ const SellProduct = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    // If not on final step, treat form submit (Enter) as 'Next'
+    if (currentStep < totalSteps) {
+      if (validateStep(currentStep)) {
+        setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+      }
+      return;
+    }
+
+    // If on final step, do nothing here — require explicit click on the 'List Product' button
+    return;
+  };
+
+  // Actual submission called only by clicking the final button
+  const performSubmit = async () => {
     if (!validateStep(currentStep)) return;
-    
+
     setIsSubmitting(true);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newProduct = {
-        id: `${formData.category}_${Date.now()}`,
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You must be logged in to list a product. Redirecting to login...');
+        navigate('/login');
+        return;
+      }
+
+      const brandFinal = formData.brand === 'Other' ? formData.otherBrand.trim() : formData.brand;
+
+      // Ensure primary image (if set) is the first in the images array
+      const images = Array.isArray(formData.images) ? [...formData.images] : [];
+      if (formData.primaryIndex !== null && formData.primaryIndex >= 0 && formData.primaryIndex < images.length) {
+        const [primary] = images.splice(formData.primaryIndex, 1);
+        images.unshift(primary);
+      }
+
+      // Build payload with final brand
+      const payload = {
         ...formData,
-        price: parseFloat(formData.price),
-        originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
-        seller: {
-          id: 'current_user',
-          name: 'Current User',
-          rating: 4.5,
-          location: formData.location,
-          joinedDate: new Date().toISOString()
-        },
-        postedDate: new Date().toISOString(),
-        views: 0,
-        interested: 0,
-        status: 'available',
-        images: formData.images.length > 0 ? formData.images : ['https://via.placeholder.com/400x300?text=No+Image']
+        brand: brandFinal,
+        images
       };
 
-      console.log('New product created:', newProduct);
+      // Call backend API
+      const result = await createProduct(payload, token);
+      console.log('Product created successfully:', result);
       alert('Product listed successfully!');
       navigate('/');
     } catch (error) {
-      alert('Error listing product. Please try again.');
+      console.error('Error listing product:', error);
+      alert(`Error listing product: ${error.message || 'Please try again.'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -245,11 +308,28 @@ const SellProduct = () => {
                     }`}
                   >
                     <option value="">Select Brand</option>
-                    {brands.filter(brand => brand !== 'All Brands').map(brand => (
-                      <option key={brand} value={brand}>{brand}</option>
-                    ))}
+                      {brands.filter(brand => brand !== 'All Brands').map(brand => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                      <option value="Other">Other</option>
                   </select>
                   {errors.brand && <span className="flex items-center gap-1 text-red-500 text-xs mt-1"><FaExclamationTriangle />{errors.brand}</span>}
+                    {formData.brand === 'Other' && (
+                      <div className="mt-3">
+                        <label htmlFor="otherBrand" className="block text-sm font-semibold text-gray-900 mb-2">Specify Brand *</label>
+                        <input
+                          id="otherBrand"
+                          name="otherBrand"
+                          value={formData.otherBrand}
+                          onChange={handleInputChange}
+                          placeholder="Enter brand name"
+                          className={`w-full px-4 py-3 border-2 rounded-xl text-base transition-all duration-300 focus:outline-none focus:ring-3 ${
+                            errors.otherBrand ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-primary focus:ring-blue-100'
+                          }`}
+                        />
+                        {errors.otherBrand && <span className="flex items-center gap-1 text-red-500 text-xs mt-1"><FaExclamationTriangle />{errors.otherBrand}</span>}
+                      </div>
+                    )}
                 </div>
               </div>
 
@@ -396,17 +476,27 @@ const SellProduct = () => {
                     onChange={handleImageUpload}
                     id="image-upload"
                     className="hidden"
+                    disabled={formData.images.length >= 5}
                   />
-                  <label htmlFor="image-upload" className="inline-flex items-center gap-2 px-6 py-4 bg-gradient-to-r from-primary to-blue-600 text-white rounded-xl cursor-pointer font-semibold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300">
-                    <FaUpload /> Upload Images
+                  <label
+                    htmlFor="image-upload"
+                    className={`inline-flex items-center gap-2 px-6 py-4 rounded-xl cursor-pointer font-semibold transition-all duration-300 ${formData.images.length >= 5 ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-gradient-to-r from-primary to-blue-600 text-white hover:-translate-y-0.5 hover:shadow-lg'}`}
+                    aria-disabled={formData.images.length >= 5}
+                  >
+                    <FaUpload /> {formData.images.length >= 5 ? 'Max 5 images' : 'Upload Images'}
                   </label>
                 </div>
-                
                 {formData.images.length > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {formData.images.map((image, index) => (
                       <div key={index} className="relative rounded-xl overflow-hidden shadow-md">
                         <img src={image} alt={`Preview ${index + 1}`} className="w-full h-32 object-cover" />
+                        <div className="absolute left-2 top-2 bg-white bg-opacity-70 rounded-full px-2 py-1 text-xs font-semibold">{index + 1}</div>
+                        {formData.primaryIndex === index ? (
+                          <div className="absolute left-2 bottom-2 bg-yellow-400 text-white text-xs px-2 py-1 rounded-full font-semibold">Primary</div>
+                        ) : (
+                          <button type="button" onClick={() => setPrimaryImage(index)} className="absolute left-2 bottom-2 bg-white bg-opacity-90 text-sm px-2 py-1 rounded-full hover:bg-primary hover:text-white transition-colors">Make Primary</button>
+                        )}
                         <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 hover:scale-110 transition-all duration-300">
                           <FaTimes />
                         </button>
@@ -470,12 +560,56 @@ const SellProduct = () => {
                       className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl text-base transition-all duration-300 focus:outline-none focus:border-primary focus:ring-3 focus:ring-blue-100"
                     />
                   </div>
+                  
+                  <div>
+                    <label htmlFor="spec_camera" className="block text-sm font-semibold text-gray-900 mb-2">Camera *</label>
+                    <input
+                      type="text"
+                      id="spec_camera"
+                      name="spec_camera"
+                      value={formData.specifications.camera}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 12MP Triple Camera"
+                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl text-base transition-all duration-300 focus:outline-none focus:border-primary focus:ring-3 focus:ring-blue-100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="spec_battery" className="block text-sm font-semibold text-gray-900 mb-2">Battery *</label>
+                    <input
+                      type="text"
+                      id="spec_battery"
+                      name="spec_battery"
+                      value={formData.specifications.battery}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 4352 mAh"
+                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl text-base transition-all duration-300 focus:outline-none focus:border-primary focus:ring-3 focus:ring-blue-100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="spec_os" className="block text-sm font-semibold text-gray-900 mb-2">Operating System (OS) *</label>
+                    <input
+                      type="text"
+                      id="spec_os"
+                      name="spec_os"
+                      value={formData.specifications.os}
+                      onChange={handleInputChange}
+                      placeholder="e.g., iOS 17, Android 14"
+                      className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl text-base transition-all duration-300 focus:outline-none focus:border-primary focus:ring-3 focus:ring-blue-100"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-5">Accessories</h3>
                 <div className="flex flex-col md:flex-row gap-4 mb-5">
+                  <div className="flex items-center gap-2 mb-2 md:mb-0">
+                    <button type="button" onClick={() => addPresetAccessory('Charger')} className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">Charger+</button>
+                    <button type="button" onClick={() => addPresetAccessory('Case')} className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">Case+</button>
+                    <button type="button" onClick={() => addPresetAccessory('Cover')} className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">Cover+</button>
+                  </div>
                   <input
                     type="text"
                     value={newAccessory}
@@ -544,19 +678,31 @@ const SellProduct = () => {
             <div className="space-y-8">
               <div>
                 <label htmlFor="location" className="block text-sm font-semibold text-gray-900 mb-2">Location *</label>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  placeholder="City, State"
-                  className={`w-full px-4 py-4 border-2 rounded-xl text-base transition-all duration-300 focus:outline-none focus:ring-3 ${
-                    errors.location ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-primary focus:ring-blue-100'
-                  }`}
-                />
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    placeholder="City, State"
+                    className={`flex-1 px-4 py-4 border-2 rounded-xl text-base transition-all duration-300 focus:outline-none focus:ring-3 ${
+                      errors.location ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-primary focus:ring-blue-100'
+                    }`}
+                  />
+                  <button type="button" onClick={() => setIsLocationModalOpen(true)} className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-100">Change</button>
+                </div>
                 {errors.location && <span className="flex items-center gap-1 text-red-500 text-xs mt-1"><FaExclamationTriangle />{errors.location}</span>}
               </div>
+              <LocationModal
+                isOpen={isLocationModalOpen}
+                onClose={() => setIsLocationModalOpen(false)}
+                currentLocation={location}
+                onLocationChange={(loc) => {
+                  setLocation(loc);
+                  setFormData(prev => ({ ...prev, location: `${loc.city}${loc.state ? ', ' + loc.state : ''}` }));
+                }}
+              />
 
               <div className="space-y-5">
                 <label className="flex items-center gap-3 cursor-pointer font-medium">
@@ -594,6 +740,14 @@ const SellProduct = () => {
                       <span className="text-gray-900">{formData.title || 'Not specified'}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-gray-200 text-sm">
+                      <span className="font-semibold text-gray-700">Brand:</span>
+                      <span className="text-gray-900">{(formData.brand === 'Other' ? formData.otherBrand : formData.brand) || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-200 text-sm">
+                      <span className="font-semibold text-gray-700">Model:</span>
+                      <span className="text-gray-900">{formData.model || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-200 text-sm">
                       <span className="font-semibold text-gray-700">Price:</span>
                       <span className="text-gray-900 font-semibold">₹{formData.price || '0'}</span>
                     </div>
@@ -601,9 +755,37 @@ const SellProduct = () => {
                       <span className="font-semibold text-gray-700">Condition:</span>
                       <span className="text-gray-900">{formData.condition || 'Not specified'}</span>
                     </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-200 text-sm">
+                      <span className="font-semibold text-gray-700">Listing Type:</span>
+                      <span className="text-gray-900">{formData.listingType}</span>
+                    </div>
                     <div className="flex justify-between items-center py-2 text-sm">
                       <span className="font-semibold text-gray-700">Location:</span>
                       <span className="text-gray-900">{formData.location || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-t border-gray-200 text-sm">
+                      <span className="font-semibold text-gray-700">Images:</span>
+                      <span className="text-gray-900">{formData.images.length} uploaded{formData.primaryIndex !== null ? ' (primary set)' : ''}</span>
+                    </div>
+                    <div className="py-2 border-t border-gray-200 text-sm">
+                      <span className="font-semibold text-gray-700">Accessories:</span>
+                      <div className="mt-2 text-gray-900">{formData.accessories.length > 0 ? formData.accessories.join(', ') : 'None'}</div>
+                    </div>
+                    <div className="py-2 border-t border-gray-200 text-sm">
+                      <span className="font-semibold text-gray-700">Specifications:</span>
+                      <div className="mt-2 text-gray-900 text-sm">
+                        <div>Storage: {formData.specifications.storage || '—'}</div>
+                        <div>RAM: {formData.specifications.ram || '—'}</div>
+                        <div>Display: {formData.specifications.display || '—'}</div>
+                        <div>Processor: {formData.specifications.processor || '—'}</div>
+                        <div>Camera: {formData.specifications.camera || '—'}</div>
+                        <div>Battery: {formData.specifications.battery || '—'}</div>
+                        <div>OS: {formData.specifications.os || '—'}</div>
+                      </div>
+                    </div>
+                    <div className="py-2 border-t border-gray-200 text-sm">
+                      <span className="font-semibold text-gray-700">Warranty:</span>
+                      <div className="mt-2 text-gray-900">{formData.warranty ? `Valid until ${formData.warrantyUntil || 'Not specified'}` : 'No'}</div>
                     </div>
                   </div>
                 </div>
@@ -675,7 +857,7 @@ const SellProduct = () => {
                   Next <FaArrowLeft style={{ transform: 'rotate(180deg)' }} />
                 </button>
               ) : (
-                <button type="submit" className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none w-full md:w-auto" disabled={isSubmitting}>
+                <button type="button" onClick={performSubmit} className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none w-full md:w-auto" disabled={isSubmitting}>
                   {isSubmitting ? 'Listing Product...' : 'List Product'}
                   {!isSubmitting && <FaCheck />}
                 </button>

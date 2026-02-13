@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FaSearch, FaHeart, FaStar, FaTag, FaExchangeAlt, FaShoppingCart, FaComments, FaFilter, FaTimes, FaChevronDown, FaSort } from 'react-icons/fa';
 import { products, categories, brands, conditions, listingTypes } from '../../utils/mockData';
 import ProductFilter from './ProductFilter';
+import { fetchProducts } from '../../api/products';
 
 const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,6 +14,9 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
   const containerRef = useRef(null);
   const formRef = useRef(null);
   const placeholderRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [backendProducts, setBackendProducts] = useState(initialProducts);
   
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -27,9 +31,34 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   
 
+  // Fetch products from backend on mount
+  useEffect(() => {
+    const loadProducts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchProducts();
+        console.log('Products fetched from backend:', data);
+        console.log('Sample product images:', data.length > 0 ? data[0].images : 'No products');
+        setBackendProducts(data);
+        setFilteredProducts(data);
+      } catch (err) {
+        console.error('Failed to fetch products from backend:', err);
+        // Fall back to mock data on error
+        setError(err.message);
+        setBackendProducts(initialProducts);
+        setFilteredProducts(initialProducts);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [initialProducts]);
+
   // Apply all filters
   const applyFilters = (searchValue = searchTerm, currentFilters = filters) => {
-    let filtered = [...initialProducts];
+    let filtered = [...backendProducts];
 
     // Search filter
     if (searchValue.trim() !== '') {
@@ -200,6 +229,17 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
     }).format(price);
   };
 
+  const getProductImageUrl = (product) => {
+    if (!product.images) return 'https://via.placeholder.com/400x300?text=No+Image';
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images[0];
+    }
+    if (typeof product.images === 'string' && product.images.trim()) {
+      return product.images;
+    }
+    return 'https://via.placeholder.com/400x300?text=No+Image';
+  };
+
   const getConditionClass = (condition) => {
     switch (condition.toLowerCase()) {
       case 'excellent':
@@ -313,7 +353,17 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
 
       {/* Products Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-6">
-        {filteredProducts.length > 0 ? (
+        {loading ? (
+          <div className="col-span-full text-center py-10">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="text-gray-500 mt-4">Loading products...</p>
+          </div>
+        ) : error ? (
+          <div className="col-span-full text-center py-10">
+            <p className="text-red-500 mb-4">Error loading products: {error}</p>
+            <p className="text-sm text-gray-600 mb-4">Showing cached data instead</p>
+          </div>
+        ) : filteredProducts.length > 0 ? (
           filteredProducts.map((product) => (
             <Link
               key={product.id}
@@ -334,12 +384,13 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
                 </button>
 
                 {/* Product Image */}
-                <div className="w-full h-40 sm:h-48 overflow-hidden flex-shrink-0">
+                <div className="w-full h-40 sm:h-48 overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
                   <img
-                    src={product.images[0]}
+                    src={getProductImageUrl(product)}
                     alt={product.title}
                     className="w-full h-full object-cover bg-gray-100"
                     onError={(e) => {
+                      console.warn(`Image failed to load for product "${product.title}": ${e.target.src}`);
                       e.target.src = 'https://via.placeholder.com/300x200?text=No+Image';
                     }}
                   />
@@ -418,7 +469,7 @@ const ProductCard = ({ initialProducts = products, referrer = 'home' }) => {
               </div>
             </Link>
           ))
-        ) : (
+        ) : loading ? null : (
           <div className="col-span-full text-center py-10 text-gray-500">
             <p className="text-lg mb-4">No products found matching your search.</p>
             <button

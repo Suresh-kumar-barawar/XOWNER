@@ -1,5 +1,6 @@
 import React from "react";
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
 import Header from "./components/Header/Header";
 import Body from "./components/Body/Body";
 import Error from "./components/Error/Error";
@@ -79,7 +80,11 @@ const appRoute = createBrowserRouter([
 ]);
 
 const App = () => {
-  return <RouterProvider router={appRoute}></RouterProvider>;
+  return (
+    <AuthProvider>
+      <RouterProvider router={appRoute} />
+    </AuthProvider>
+  );
 };
 
 export default App;

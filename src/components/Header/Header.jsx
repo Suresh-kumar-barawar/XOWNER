@@ -1,22 +1,43 @@
-import { Link } from "react-router-dom";
-import { useState } from "react";
-import { FiMapPin, FiUser, FiMenu, FiX } from "react-icons/fi";
-import { FaTag } from "react-icons/fa";
-import { FaCircle } from "react-icons/fa";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { FiMapPin, FiUser, FiMenu, FiX, FiLogOut, FiSettings, FiHeart } from "react-icons/fi";
+import { FaTag, FaCircle } from "react-icons/fa";
 import useOnlineStatus from "../../utils/useOnlineStatus";
 import useGeolocation from "../../utils/useGeolocation";
 import LocationModal from "../LocationModal/LocationModal";
+import { useAuth } from "../../context/AuthContext";
 
 const Header = () => {
+  const navigate = useNavigate();
+  const { user, logout, isLoggedIn, isLoading } = useAuth();
   const isUserOnline = useOnlineStatus();
   const { location, loading, setLocation } = useGeolocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  const handleLogout = () => {
+    logout();
+    setIsProfileDropdownOpen(false);
+    setIsMenuOpen(false);
+    navigate('/');
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('[data-profile-dropdown]')) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   return (
     <>
@@ -43,20 +64,15 @@ const Header = () => {
             
             {/* Right Section - Desktop Navigation / Mobile Menu Button */}
             <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center space-x-4">
-                {/* <Link 
-                  to="/sell" 
-                  className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
-                >
-                  <FaTag size={14} />
-                  <span>Sell</span>
-                </Link> */}
-                <Link 
-                  to="/about" 
-                  className="text-gray-700 hover:text-primary transition-colors no-underline"
-                >
-                  About
-                </Link>
+            <div className="hidden md:flex items-center space-x-4">
+              <Link 
+                to="/about" 
+                className="text-gray-700 hover:text-primary transition-colors no-underline"
+              >
+                About
+              </Link>
+              
+              {!isLoggedIn ? (
                 <Link 
                   to="/login" 
                   className="flex items-center space-x-2 border border-primary text-primary px-4 py-2 rounded-lg hover:bg-primary hover:text-white transition-colors"
@@ -64,15 +80,100 @@ const Header = () => {
                   <FiUser size={14} />
                   <span>Login</span>
                 </Link>
-                {isLoggedIn && (
-                  <div className="flex items-center">
-                    <FaCircle 
-                      className={`${isUserOnline ? 'text-green-500' : 'text-red-500'}`} 
-                      size={8} 
+              ) : (
+                <div className="relative" data-profile-dropdown>
+                  <button 
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${user.fullName || user.name || 'User'}&background=007bff&color=fff&size=32`}
+                      alt={user.fullName || user.name}
+                      className="w-8 h-8 rounded-full"
                     />
-                  </div>
-                )}
-              </div>
+                    <div className="text-left hidden sm:block">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {user.fullName || user.name || 'User'}
+                      </p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                      {/* User Info */}
+                      <div className="p-4 border-b border-gray-200">
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={`https://ui-avatars.com/api/?name=${user.fullName || user.name || 'User'}&background=007bff&color=fff&size=48`}
+                            alt={user.fullName || user.name}
+                            className="w-12 h-12 rounded-full"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {user.fullName || user.name || 'User'}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                            {user.phone && (
+                              <p className="text-xs text-gray-500 truncate">{user.phone}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <Link
+                          to="/profile"
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors text-sm no-underline"
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                        >
+                          <FiUser size={16} />
+                          <span>My Profile</span>
+                        </Link>
+                        <Link
+                          to="/wishlist"
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors text-sm no-underline"
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                        >
+                          <FiHeart size={16} />
+                          <span>Wishlist</span>
+                        </Link>
+                        <Link
+                          to="/settings"
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors text-sm no-underline"
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                        >
+                          <FiSettings size={16} />
+                          <span>Settings</span>
+                        </Link>
+                      </div>
+
+                      {/* Logout Button */}
+                      <div className="border-t border-gray-200 p-2">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors rounded-lg text-sm font-medium"
+                        >
+                          <FiLogOut size={16} />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {isLoggedIn && (
+                <div className="flex items-center">
+                  <FaCircle 
+                    className={`${isUserOnline ? 'text-green-500' : 'text-red-500'}`} 
+                    size={8} 
+                  />
+                </div>
+              )}
+            </div>
 
               {/* Mobile Menu Button */}
               <button 
@@ -98,16 +199,26 @@ const Header = () => {
           {/* Menu Panel */}
           <div className="fixed top-16 left-0 right-0 bg-white shadow-lg border-t border-gray-200">
             <div className="px-4 py-6 space-y-4">
-              {/* Mobile Navigation */}
-              {/* <Link 
-                to="/sell" 
-                className="flex items-center space-x-2 bg-primary text-white px-4 py-3 rounded-lg hover:bg-primary-dark transition-colors w-full justify-center"
-                onClick={toggleMenu}
-              >
-                <FaTag size={14} />
-                <span>Sell</span>
-              </Link> */}
+              {/* User Info Section (Mobile) */}
+              {isLoggedIn && user && (
+                <div className="pb-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${user.fullName || user.name || 'User'}&background=007bff&color=fff&size=48`}
+                      alt={user.fullName || user.name}
+                      className="w-12 h-12 rounded-full"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {user.fullName || user.name || 'User'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
+              {/* Mobile Navigation */}
               <Link 
                 to="/about" 
                 className="block text-gray-700 hover:text-primary transition-colors text-center py-2 no-underline"
@@ -116,14 +227,50 @@ const Header = () => {
                 About
               </Link>
               
-              <Link 
-                to="/login" 
-                className="flex items-center space-x-2 border border-primary text-primary px-4 py-3 rounded-lg hover:bg-primary hover:text-white transition-colors w-full justify-center"
-                onClick={toggleMenu}
-              >
-                <FiUser size={14} />
-                <span>Login</span>
-              </Link>
+              {!isLoggedIn ? (
+                <Link 
+                  to="/login" 
+                  className="flex items-center space-x-2 border border-primary text-primary px-4 py-3 rounded-lg hover:bg-primary hover:text-white transition-colors w-full justify-center"
+                  onClick={toggleMenu}
+                >
+                  <FiUser size={14} />
+                  <span>Login</span>
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/profile"
+                    className="flex items-center space-x-2 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors w-full justify-center rounded-lg text-sm"
+                    onClick={toggleMenu}
+                  >
+                    <FiUser size={16} />
+                    <span>My Profile</span>
+                  </Link>
+                  <Link
+                    to="/wishlist"
+                    className="flex items-center space-x-2 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors w-full justify-center rounded-lg text-sm"
+                    onClick={toggleMenu}
+                  >
+                    <FiHeart size={16} />
+                    <span>Wishlist</span>
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="flex items-center space-x-2 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors w-full justify-center rounded-lg text-sm"
+                    onClick={toggleMenu}
+                  >
+                    <FiSettings size={16} />
+                    <span>Settings</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors w-full justify-center rounded-lg text-sm font-medium"
+                  >
+                    <FiLogOut size={16} />
+                    <span>Logout</span>
+                  </button>
+                </>
+              )}
               
               {isLoggedIn && (
                 <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 pt-4 border-t border-gray-200">
