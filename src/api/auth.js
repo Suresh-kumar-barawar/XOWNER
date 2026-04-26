@@ -37,6 +37,93 @@
 // }
 // src/api/auth.js
 
+////////////////////////////////////////////////////////////////////////////////////
+
+// import API_BASE from './config';
+
+// // async function handleResponse(res) {
+// //   const text = await res.text();
+// //   let data = null;
+
+// //   try {
+// //     data = text ? JSON.parse(text) : null;
+// //   } catch (e) {
+// //     data = text;
+// //   }
+
+// //   if (!res.ok) {
+// //     const message = (data && data.message) || res.statusText || 'Request failed';
+// //     throw new Error(message);
+// //   }
+
+// //   return data;
+// // }
+
+// async function handleResponse(res) {
+//   const text = await res.text();
+//   let data = null;
+
+//   try {
+//     data = text ? JSON.parse(text) : null;
+//   } catch (e) {
+//     data = text;
+//   }
+
+//   if (!res.ok) {
+//     console.error("API ERROR:", res.status, data); // 🔥 DEBUG
+
+//     const message =
+//       (data && (data.message || data.error)) ||
+//       (typeof data === "string" ? data : null) ||
+//       `Error ${res.status}`;
+
+//     throw new Error(message);
+//   }
+
+//   return data;
+// }
+
+// // ================= LOGIN =================
+// export async function login({ email, password }) {
+//   const res = await fetch(`${API_BASE}/api/auth/login`, {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ email, password })
+//   });
+
+//   return handleResponse(res);
+// }
+
+// // ================= REGISTER =================
+// export async function register({ fullName, email, password, phone, location }) {
+//   const res = await fetch(`${API_BASE}/api/auth/register`, {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({
+//       fullName,
+//       email,
+//       password,
+//       phoneNumber: phone,   // ✅ FINAL FIX
+//       location
+//     })
+//   });
+
+//   return handleResponse(res);
+// }
+
+// // ================= GET USER =================
+// export async function me(token) {
+//   const res = await fetch(`${API_BASE}/api/auth/me`, {
+//     headers: {
+//       Authorization: `Bearer ${token}`
+//     }
+//   });
+
+//   return handleResponse(res);
+// }
+
+/////////////////////////////////////
+
 import API_BASE from './config';
 
 async function handleResponse(res) {
@@ -50,7 +137,13 @@ async function handleResponse(res) {
   }
 
   if (!res.ok) {
-    const message = (data && data.message) || res.statusText || 'Request failed';
+    console.error("API ERROR:", res.status, data); // 🔥 DEBUG
+
+    const message =
+      (data && (data.message || data.error)) ||
+      (typeof data === "string" ? data : null) ||
+      `Error ${res.status}`;
+
     throw new Error(message);
   }
 
@@ -62,7 +155,12 @@ export async function login({ email, password }) {
   const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
+
+    // 🔥 IMPORTANT FIX: email lowercase
+    body: JSON.stringify({
+      email: email.toLowerCase(),
+      password
+    })
   });
 
   return handleResponse(res);
@@ -75,9 +173,9 @@ export async function register({ fullName, email, password, phone, location }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       fullName,
-      email,
+      email: email.toLowerCase(),   // 🔥 ALSO FIX HERE
       password,
-      phoneNumber: phone,   // ✅ FINAL FIX
+      phoneNumber: phone,
       location
     })
   });
